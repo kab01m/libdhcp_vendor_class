@@ -41,6 +41,18 @@ Add the following to kea-dhcp4.conf
 }
 ```
 
+Create table in your PostgreSQL database
+
+```SQL
+CREATE TABLE cisco (
+    mac macaddr,
+    title character varying,
+    mtime integer,
+    ip inet,
+    uid character varying
+);
+```
+
 ---
 
 ## Credits
