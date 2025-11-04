@@ -88,7 +88,7 @@ int pkt4_receive(CalloutHandle& handle) {
 
         // Skip if vendor class does not start with "Cisco"
         if (vendor_class_str.find("Cisco") != 0) {
-            std::cerr << "Vendor class " + vendor_class_str + " skipped" << std::endl;
+            std::cerr << "Vendor class " + vendor_class_str + " ignored" << std::endl;
             return 0;
         }
 
@@ -108,38 +108,27 @@ int pkt4_receive(CalloutHandle& handle) {
             std::cerr << "Failed to get database connection." << std::endl;
             return 0;
     	}
-    
-        char* escaped_mac = new char[mac_address.size() * 2 + 1];
-        char* escaped_vendor = new char[vendor_class_str.size() * 2 + 1];
-        if (!PQescapeStringConn(conn, escaped_mac, mac_address.c_str(), mac_address.size(), nullptr) ||
-            !PQescapeStringConn(conn, escaped_vendor, vendor_class_str.c_str(), vendor_class_str.size(), nullptr)) {
-    		std::cerr << "Failed to escape strings." << std::endl;
-            delete[] escaped_mac;
-            delete[] escaped_vendor;
-            return 0;
-    	}
-    
-        std::string query = "INSERT INTO cisco (mac, title, mtime) VALUES ('" +
-                            std::string(escaped_mac) + "', '" +
-                            std::string(escaped_vendor) +
-                            "', extract (epoch from now())) " +
-                            "on conflict (mac) do update set title = '" +
-                            std::string(escaped_vendor) +
-                            "', mtime = extract (epoch from now())";
-    
-        PGresult* res = PQexec(conn, query.c_str());
+
+        // Prepare the statement
+		const char* paramValues[2] = {mac_address.c_str(), vendor_class_str.c_str()};
+		const char* prepare_stmt = "INSERT INTO cisco (mac, title, mtime) VALUES ($1, $2, extract (epoch from now()) on conflict (mac) do update set title = $1, mtime = extract (epoch from now())";
+
+        PGresult* res = PQprepare(conn, "insert_vendor_class", prepare_stmt, 2, nullptr);
+
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-    		std::cerr << "Database query failed: " << PQerrorMessage(conn) << std::endl;
-    		std::cerr << "Query was: " << query << std::endl;
+            std::cerr << "Failed to prepare statement: " << PQerrorMessage(conn) << std::endl;
             PQclear(res);
-            delete[] escaped_mac;
-            delete[] escaped_vendor;
             return 0;
         }
-    
         PQclear(res);
-        delete[] escaped_mac;
-        delete[] escaped_vendor;
+
+		res = PQexecPrepared(conn, "insert_vendor_class", 2, paramValues, nullptr, nullptr, 0);
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+			std::cerr << "Failed to execute prepared statement: " << PQerrorMessage(conn) << std::endl;
+            PQclear(res);
+            return 0;
+        }
+        PQclear(res);
 
 	} catch (const std::exception& e) {
 		std::cerr << "Exception in pkt4_receive: " << e.what() << std::endl;
