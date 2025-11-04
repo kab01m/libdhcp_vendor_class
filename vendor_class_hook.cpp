@@ -111,7 +111,7 @@ int pkt4_receive(CalloutHandle& handle) {
 
         // Prepare the statement
 		const char* paramValues[2] = {mac_address.c_str(), vendor_class_str.c_str()};
-		const char* prepare_stmt = "INSERT INTO cisco (mac, title, mtime) VALUES ($1, $2, extract (epoch from now()) on conflict (mac) do update set title = $1, mtime = extract (epoch from now())";
+		const char* prepare_stmt = "INSERT INTO cisco (mac, title, mtime) VALUES ($1, $2, extract (epoch from now())) on conflict (mac) do update set title = $2, mtime = extract (epoch from now())";
 
         PGresult* res = PQprepare(conn, "insert_vendor_class", prepare_stmt, 2, nullptr);
 
@@ -128,6 +128,7 @@ int pkt4_receive(CalloutHandle& handle) {
             PQclear(res);
             return 0;
         }
+		std::cerr << "Successful update: " << vendor_class_str.c_str() << std::endl;
         PQclear(res);
 
 	} catch (const std::exception& e) {
