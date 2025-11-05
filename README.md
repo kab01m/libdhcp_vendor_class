@@ -21,7 +21,7 @@ mv libvendor_class_hook.so /usr/lib64/kea/hooks/
 
 ## Configuration
 
-Add the following to kea-dhcp4.conf
+Add the following to kea-dhcp4.conf. You can omit values same to default.
 
 ```json
 {
@@ -31,6 +31,7 @@ Add the following to kea-dhcp4.conf
         "library": "/usr/lib64/kea/hooks/libvendor_class_hook.so",
         "parameters": {
           "db_host": "localhost",
+          "db_port": "5432",
           "db_name": "kea_db",
           "db_user": "kea_user",
           "db_password": "kea_password"

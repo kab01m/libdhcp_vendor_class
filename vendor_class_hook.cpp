@@ -13,10 +13,10 @@ using namespace isc::data;
 
 // Global variables for database configuration
 std::string db_host = "localhost";
+std::string db_port = "5432";
 std::string db_name = "kea_db";
 std::string db_user = "kea_user";
 std::string db_password = "kea_password";
-std::string conninfo;
 
 extern "C" {
 
@@ -34,6 +34,10 @@ int load(LibraryHandle& handle) {
         if (host) {
             db_host = host->stringValue();
         }
+        ConstElementPtr port = params->get("db_port");
+        if (port) {
+            db_port = port->stringValue();
+        }
         ConstElementPtr name = params->get("db_name");
         if (name) {
             db_name = name->stringValue();
@@ -48,12 +52,6 @@ int load(LibraryHandle& handle) {
         }
     }
 
-    // Build the connection string
-    conninfo = "dbname=" + db_name +
-               " user=" + db_user +
-               " password=" + db_password +
-               " host=" + db_host;
-
     return 0;
 }
 
@@ -61,8 +59,19 @@ int load(LibraryHandle& handle) {
 PGconn* get_db_connection() {
     static thread_local PGconn* conn = nullptr;
     if (!conn) {
-        conn = PQconnectdb(conninfo.c_str());
+		const char* keywords[] = {"host", "port", "dbname", "user", "password", nullptr};
+        const char* values[] = {
+            db_host.c_str(),
+            db_port.c_str(),
+            db_name.c_str(),
+            db_user.c_str(),
+            db_password.c_str(),
+			nullptr
+        };
+
+        conn = PQconnectdbParams(keywords, values, 0);
         if (PQstatus(conn) != CONNECTION_OK) {
+			std::cerr << "Failed to connect to database: " << PQerrorMessage(conn) << std::endl;
             PQfinish(conn);
             conn = nullptr;
         }
